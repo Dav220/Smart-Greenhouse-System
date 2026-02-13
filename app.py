@@ -42,8 +42,6 @@ def after_request(response):
 @socketio.on("connect")
 def on_connect():
     print("A client connected")
-    # Optionally send initial data
-    #emit("db_snapshot", {"items": database})
 
 @socketio.on("disconnect")
 def on_disconnect():
@@ -60,8 +58,6 @@ class ReadingModel(db.Model):
     time:datetime = db.Column(db.DateTime)
     user:str = db.Column(db.String)
 
-    # def __repr__(self):
-    #     return f"Temperature = {self.temp}, Humidity = {self.hum}, Moisture Level: {self.moist}"
 
 @dataclass
 class Users(db.Model):
@@ -79,7 +75,6 @@ sensor_args = reqparse.RequestParser()
 sensor_args.add_argument('temp', type = float, required = True)
 sensor_args.add_argument('hum', type = float, required = True)
 sensor_args.add_argument('moist', type = int, required = True)
-#sensor_args.add_argument('time', type = datetime, required = True)
 
 sensorFields = {
     'id': fields.Integer,
@@ -93,21 +88,16 @@ sensorFields = {
 
 
 class Readings(Resource):
-    #@marshal_with(sensorFields)
     @login_required
     def get(self):
-        # sql_query = text("SELECT * FROM reading_model WHERE username IN (SELECT * FROM users WHERE id = :user_id)")
         if "user_id" in session and "username" in session:
-            #readings = db.session.execute(sql_query,{"user_id": session["user_id"]})
             user = db.session.execute(select(Users).where(Users.username == session["username"])).scalars().first()
-            #readings = db.session.execute(select(ReadingModel).where(ReadingModel.user == user.username)).scalars()
             readings = ReadingModel.query.filter_by(user=session["username"]).all()
             return jsonify(readings)
         
         return apology("No users yet", 403)
         
     
-    #@marshal_with(sensorFields)
     @login_required
     def post(self):
         key = request.headers.get('x-api-key')
@@ -115,12 +105,9 @@ class Readings(Resource):
             abort(403)  # Forbidden
         
         args = sensor_args.parse_args()
-        #date = datetime.now()
 
         # Query database for username
         user_id = session["user_id"]
-        #username = db.session.execute(select(Users).where(Users.id == session["user_id"])).scalars().first()
-        #username = username.id
         
 
         reading = ReadingModel(temp=args["temp"], hum=args["hum"], moist=args["moist"], time=args["time"], user=args["user"])
@@ -132,8 +119,7 @@ class Readings(Resource):
 
         return readings, 201
 
-#@socketio.on('post', namespace='/api/readings/')
-#def handle_new_reading()
+
     
 api.add_resource(Readings, "/readings")
     
@@ -165,7 +151,6 @@ def readData(arduino,username, stop_event, db):
                     print(f"Temperature: {temp}, Humidity: {hum}, Moisture Level: {moist}, Date and time: {date.ctime()}")
                                 
                     # Adds a new reading to the database
-                    #if session["username"]:
                     reading = ReadingModel(temp=temp, hum=hum, moist=moist, time=date, user=username)
                     socketio.emit("readings_update",data)
 
@@ -199,7 +184,6 @@ def home():
     if request.method == 'GET':
         return render_template("index.html")
     
-    #elif request.method == 'POST':
 
 
 
@@ -227,7 +211,6 @@ def register():
         
         
         # Query database for username
-        #sql_query = text("SELECT * FROM users where username = :target")
         rows = db.session.execute(select(Users).where(Users.username == username)).scalars().first()
 
         if rows != None:
